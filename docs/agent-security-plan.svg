@@ -1,0 +1,57 @@
+<svg width="1200" height="520" viewBox="0 0 1200 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Security Lab roadmap</title>
+  <desc id="desc">A four-stage plan for baseline tool authorization, retrieval security, evaluation, and live model comparison.</desc>
+  <defs>
+    <style>
+      .bg { fill: #0f172a; }
+      .title { font: 700 32px 'Segoe UI', sans-serif; fill: #e2e8f0; }
+      .label { font: 600 22px 'Segoe UI', sans-serif; fill: #e2e8f0; }
+      .small { font: 500 17px 'Segoe UI', sans-serif; fill: #cbd5e1; }
+      .box { fill: #111827; stroke: #38bdf8; stroke-width: 2; rx: 18; }
+      .accent { fill: #1d4ed8; }
+      .success { fill: #166534; }
+      .warn { fill: #7c2d12; }
+      .arrow { stroke: #94a3b8; stroke-width: 4; fill: none; marker-end: url(#arrowhead); }
+      .pill { fill: #0f172a; stroke: #38bdf8; stroke-width: 2; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1200" height="520"/>
+  <text x="600" y="52" text-anchor="middle" class="title">Agent Security Lab plan</text>
+
+  <rect x="70" y="100" width="220" height="150" class="box"/>
+  <rect x="90" y="120" width="180" height="40" rx="12" class="accent"/>
+  <text x="180" y="146" text-anchor="middle" class="label">Stage 1</text>
+  <text x="180" y="190" text-anchor="middle" class="label">Guarded tools</text>
+  <text x="180" y="220" text-anchor="middle" class="small">Scope + validation</text>
+
+  <rect x="330" y="100" width="220" height="150" class="box"/>
+  <rect x="350" y="120" width="180" height="40" rx="12" class="warn"/>
+  <text x="440" y="146" text-anchor="middle" class="label">Stage 2</text>
+  <text x="440" y="190" text-anchor="middle" class="label">Attack demos</text>
+  <text x="440" y="220" text-anchor="middle" class="small">Normal vs injected</text>
+
+  <rect x="590" y="100" width="220" height="150" class="box"/>
+  <rect x="610" y="120" width="180" height="40" rx="12" class="success"/>
+  <text x="700" y="146" text-anchor="middle" class="label">Stage 3</text>
+  <text x="700" y="190" text-anchor="middle" class="label">RAG boundary</text>
+  <text x="700" y="220" text-anchor="middle" class="small">Retrieved docs + policy</text>
+
+  <rect x="850" y="100" width="260" height="150" class="box"/>
+  <rect x="870" y="120" width="220" height="40" rx="12" class="pill"/>
+  <text x="980" y="146" text-anchor="middle" class="label">Stage 4</text>
+  <text x="980" y="190" text-anchor="middle" class="label">Evaluation &amp; live model</text>
+  <text x="980" y="220" text-anchor="middle" class="small">Reports, trials, Ollama</text>
+
+  <path d="M290 175 H330" class="arrow"/>
+  <path d="M550 175 H590" class="arrow"/>
+  <path d="M810 175 H850" class="arrow"/>
+
+  <rect x="150" y="300" width="900" height="120" class="box"/>
+  <text x="600" y="345" text-anchor="middle" class="label">Core idea</text>
+  <text x="600" y="382" text-anchor="middle" class="small">Keep the model untrusted, keep the application boundary trusted, and verify every action before it can affect local state.</text>
+  <text x="600" y="405" text-anchor="middle" class="small">The repository demonstrates the enforcement boundary first, then adds retrieval-based prompt injection and comparative evaluation.</text>
+</svg>

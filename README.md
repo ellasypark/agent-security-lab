@@ -1,117 +1,105 @@
 # Agent Security Lab
 
-**An email agent may request an unauthorized action. The application decides whether it executes.**
+This repository is a hands-on lab for learning how to keep an AI agent useful without letting it take unsafe actions. The core idea is simple: the model may propose actions, but the trusted application decides whether those actions are allowed to execute.
 
-A small Python lab demonstrating task-scoped tool authorization against indirect prompt injection. Includes a reproducible scripted comparison and an optional live Ollama agent. All emails are synthetic; sending only appends to a local mock outbox.
+## Project plan
+
+The project is structured in stages so the security lessons build naturally:
+
+1. Baseline authorization: enforce task scope, validate tool arguments, and block side effects outside the allowed boundary.
+2. Prompt injection demos: simulate malicious instructions and compare guarded vs. unguarded behavior.
+3. Retrieval boundary: add a small RAG + LangGraph flow with a malicious document and restricted permissions.
+4. Evaluation and live-model comparison: measure outcomes across scenarios and repeat runs with report generation.
+
+![Agent Security Lab plan](docs/agent-security-plan.svg)
+
+## What this repo demonstrates
+
+- Tool authorization is enforced before any local effect is committed.
+- The application owns the task scope instead of trusting model claims.
+- Retrieval and agent action steps are separated from execution policy.
+- Scripted scenarios and live model runs are both evaluated with the same reporting pattern.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    User[User: draft a reply to email_001] --> App[Python application]
-    App --> Scope[Immutable task scope]
-    App --> Model[LLM]
-    Model -->|Tool name and arguments| Gate{Validate and authorize}
+    User[User request] --> App[Trusted application layer]
+    App --> Scope[Task scope and policy]
+    App --> Model[LLM or agent loop]
+    Model -->|Proposed action| Gate{Authorize and validate}
     Scope --> Gate
     Gate -->|Allowed| Tools[Local tool executor]
     Gate -->|Denied| Block[Blocked result]
-    Tools --> Files[(Synthetic email / draft / mock outbox)]
-    Tools -->|Untrusted tool result| Model
-    Block --> Model
-    Gate --> Log[Audit log]
-    Attacker[Attacker-controlled email body] --> Files
+    Tools --> Files[(Synthetic drafts / emails / outbox)]
+    Gate --> Audit[Audit log and report]
+    Attacker[Malicious email or document] --> Files
 ```
 
-The model receives tool descriptions, not Python execution access. Every call passes through `Executor.execute`. The application owns the scope; claims such as "administrator approved" inside an email do not change it. File destinations are fixed by the executor, never supplied by the model.
+The model sees tool descriptions, but it does not directly call the environment. Every proposed action is validated by the application boundary before any effect is applied.
 
 ## Quick start
 
-**New learning experiment:** [RAG + LangGraph with a malicious document and a permission boundary](rag_lab/README.md).
-Includes an offline scripted comparison and an optional live Ollama mode.
+Requires Python 3.10+.
 
-Requires Python 3.10+. The scripted demo and tests use only the standard library.
+### Baseline authorization lab
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 python3 main.py --scenario normal
 python3 main.py --scenario attack --unguarded
 python3 main.py --scenario attack
 python3 -m unittest discover -s tests -v
 ```
 
-Each command creates a separate directory under `runs/`.
-
-| Scenario | Authorization | Expected result |
-| --- | --- | --- |
-| Normal scripted request | Enabled | Draft saved |
-| Attack scripted request | Disabled | Mock outbox entry created |
-| Attack scripted request | Enabled | Request blocked; no outbox entry |
-
-**The scripted demo directly injects tool requests. It tests enforcement, not whether an LLM can be tricked.**
-
-## Live model experiment
-
-Install and start [Ollama](https://docs.ollama.com/), then pull a model that supports tool calling. Substitute its installed name below:
+### RAG + LangGraph lab
 
 ```bash
-python3 main.py --mode ollama --model YOUR_MODEL --scenario normal
-python3 main.py --mode ollama --model YOUR_MODEL --scenario attack --unguarded
-python3 main.py --mode ollama --model YOUR_MODEL --scenario attack
+source .venv/bin/activate
+python3 -m pip install -r requirements-rag.txt
+python3 -m rag_lab.app --scenario normal
+python3 -m rag_lab.app --scenario attack
+python3 -m rag_lab.app --scenario attack --unguarded
 ```
 
-The adapter calls `http://localhost:11434/api/chat`. Runs are bounded to eight model steps and eight tool calls per response. Model behavior varies: an attack may never produce an unauthorized call. Record that outcome honestly. The loop ending does not itself establish that a draft was saved; inspect the artifacts.
-
-For the comparison, the model sees the same tool definitions in both configurations, including the mock send tool. Production deployments should also remove unnecessary tools from the model's available tool set.
-
-## Threat model and controls
-
-- Attacker controls the email body, not application code or task scope.
-- Task permits reading and drafting only for `email_001`.
-- Unknown tools, extra fields, invalid values, and out-of-scope IDs are denied.
-- `send_email` is denied for this task even when the model claims approval.
-- Audit records contain tool, decision, and reason; they omit email bodies.
-- Drafts and the mock outbox contain synthetic content and remain git-ignored.
-
-This is an application-level boundary, not an operating-system sandbox. It assumes the host application is trusted and offers no arbitrary shell/code tool. It does not guarantee draft correctness, detect every injection, or demonstrate production email security. The unguarded option exists only to compare local simulated effects.
-
-## Evaluation
-
-Run all four scenario/authorization combinations, optionally repeating each:
+### Evaluation and comparison
 
 ```bash
 python3 main.py --compare
 python3 main.py --compare --repeat 3
-python3 main.py --mode ollama --model YOUR_MODEL --compare --repeat 3
 ```
 
-Every run writes `report.json` alongside its audit log and local artifacts. Reports
-include mode, scenario, requested model name, guard mode, tool-call and blocked-call
-counts, unauthorized calls attempted, unauthorized actions executed, and whether
-a draft for the task email exists. The application evaluates every request against
-the same scope even in unguarded mode, so the comparison can count policy violations
-that actually executed. Invalid requests count as unauthorized attempts; failed
-tool operations do not count as executed actions.
+Each run creates a fresh directory under `runs/` and writes a corresponding report with structured metrics.
 
-Reports distinguish execution errors from completed loops and retain partial
-metrics when a live run fails. A failed run stops the comparison and exits with an
-error. `completed` does not mean the user task succeeded; draft existence does not
-establish draft correctness. Reports record the requested model name, not a verified
-model version or digest. Record that separately for live experiments. Scripted
-comparisons measure enforcement only, not model attack success rates.
+## Repository layout
 
-Keep model susceptibility separate from execution enforcement. For live runs, report model name/version, scenario, guard mode, unauthorized calls attempted, unauthorized actions executed, and whether the expected draft exists. Repeat runs before drawing conclusions about attack rates. No live-model attack success rate is claimed by this repository.
-
-The test suite verifies blocked side effects, normal draft creation, resource scope, forged approval/path fields, malformed calls, and the unguarded control.
-
-## Files
-
-- `main.py`: CLI, run directories, scripted demo.
-- `agent.py`: bounded Ollama tool-calling loop.
-- `policy.py`: argument validation and application-owned scope.
-- `evaluation.py`: per-run metrics and JSON reports.
+- `main.py`: CLI entry point and scripted demo runner.
+- `policy.py`: authorization and validation rules.
 - `tools.py`: fixed-path local effects and audit logging.
-- `tests/test_security.py`: authorization regression tests.
+- `agent.py`: live Ollama loop for tool-calling experiments.
+- `evaluation.py`: report generation and metrics.
+- `rag_lab/`: retrieval-based security experiments with LangGraph.
+- `tests/`: regression tests for authorization and evaluation behavior.
+
+## Security boundary and limitations
+
+This project is intentionally focused on application-layer safety, not OS-level sandboxing. It models the common pattern in which the model is untrusted and the application remains trusted.
+
+Important boundaries in this repo:
+
+- Only approved tool names and argument shapes are accepted.
+- Task scope is enforced for the active request.
+- The model cannot override the policy by claiming approval or inventing resource IDs.
+- Synthetic data is used for all local effects and mock outbox entries.
+- The unguarded mode exists only as a controlled comparison, not as a recommended deployment.
+
+## Why this matters
+
+Agent systems fail when they confuse model output with permission. In practice, the safe design is to keep the model expressive but do not let it choose execution boundaries. This repository demonstrates that pattern across both a direct tool-calling demo and a retrieval-based workflow.
 
 ## References
 
 - [OWASP AI Agent Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/AI_Agent_Security_Cheat_Sheet.html)
 - [Ollama Chat API](https://docs.ollama.com/api/chat)
+- [LangGraph Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api)
