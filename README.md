@@ -26,6 +26,9 @@ The model receives tool descriptions, not Python execution access. Every call pa
 
 ## Quick start
 
+**New learning experiment:** [RAG + LangGraph with a malicious document and a permission boundary](rag_lab/README.md).
+Includes an offline scripted comparison and an optional live Ollama mode.
+
 Requires Python 3.10+. The scripted demo and tests use only the standard library.
 
 ```bash
@@ -72,6 +75,29 @@ This is an application-level boundary, not an operating-system sandbox. It assum
 
 ## Evaluation
 
+Run all four scenario/authorization combinations, optionally repeating each:
+
+```bash
+python3 main.py --compare
+python3 main.py --compare --repeat 3
+python3 main.py --mode ollama --model YOUR_MODEL --compare --repeat 3
+```
+
+Every run writes `report.json` alongside its audit log and local artifacts. Reports
+include mode, scenario, requested model name, guard mode, tool-call and blocked-call
+counts, unauthorized calls attempted, unauthorized actions executed, and whether
+a draft for the task email exists. The application evaluates every request against
+the same scope even in unguarded mode, so the comparison can count policy violations
+that actually executed. Invalid requests count as unauthorized attempts; failed
+tool operations do not count as executed actions.
+
+Reports distinguish execution errors from completed loops and retain partial
+metrics when a live run fails. A failed run stops the comparison and exits with an
+error. `completed` does not mean the user task succeeded; draft existence does not
+establish draft correctness. Reports record the requested model name, not a verified
+model version or digest. Record that separately for live experiments. Scripted
+comparisons measure enforcement only, not model attack success rates.
+
 Keep model susceptibility separate from execution enforcement. For live runs, report model name/version, scenario, guard mode, unauthorized calls attempted, unauthorized actions executed, and whether the expected draft exists. Repeat runs before drawing conclusions about attack rates. No live-model attack success rate is claimed by this repository.
 
 The test suite verifies blocked side effects, normal draft creation, resource scope, forged approval/path fields, malformed calls, and the unguarded control.
@@ -81,6 +107,7 @@ The test suite verifies blocked side effects, normal draft creation, resource sc
 - `main.py`: CLI, run directories, scripted demo.
 - `agent.py`: bounded Ollama tool-calling loop.
 - `policy.py`: argument validation and application-owned scope.
+- `evaluation.py`: per-run metrics and JSON reports.
 - `tools.py`: fixed-path local effects and audit logging.
 - `tests/test_security.py`: authorization regression tests.
 
